@@ -13,10 +13,17 @@ import {
 import { OAuth2Client } from "google-auth-library";
 import { generateToken } from "#/utils/tokenHelper";
 import verificationTokenModel from "#/model/verificationToken";
+import axios from "axios";
 
 export const createUser: RequestHandler = async (req, res) => {
   try {
-    const { email, name, password } = req.body;
+    const { email, name, password, captcha } = req.body;
+    const response = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
+    );
+    if (!response.data.success) {
+      return res.status(403).json({ message: "Invalid captcha" })
+    }
     const userExist = await User.findOne({ email });
     if (userExist) {
       return res.status(403).json({ message: "Email already exists!" });
@@ -47,8 +54,14 @@ export const createUser: RequestHandler = async (req, res) => {
 
 
 export const signIn: RequestHandler = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, captcha } = req.body;
 
+  const response = await axios.post(
+    `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
+  );
+  if (!response.data.success) {
+    return res.status(403).json({ message: "Invalid captcha" })
+  }
   const user = await User.findOne({ email });
 
   if (!user)
@@ -94,7 +107,7 @@ export const generateForgetPasswordLink: RequestHandler = async (req, res) => {
   // const resetLink = `${PASSWORD_RESET_LINK}?token=${token}&userId=${user._id}`;
   const resetLink = `${req.headers.origin}/my-account/change-password/?token=${token}&userId=${user._id}`;
 
-  sendForgetPasswordLink({ email: user.email, link: resetLink }); 
+  sendForgetPasswordLink({ email: user.email, link: resetLink });
 
   res.json({ message: "Check your registered mail" });
 };

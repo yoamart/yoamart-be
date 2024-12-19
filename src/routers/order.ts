@@ -16,7 +16,7 @@ router.get('/total/pending-orders', mustAuth, isAdmin, totalNumberOfPendingOrder
 router.get('/total/orders', mustAuth, isAdmin, totalNumberOfOrders)
 router.get('/total/processing-orders', mustAuth, isAdmin, totalNumberOfProcessingOrders)
 router.get('/all/orders', isAdmin, getAllOrders);
-router.get('/userOrder', mustAuth, getAllUserOrders);
+// router.get('/userOrder', mustAuth, getAllUserOrders);
 // router.post('/:order', mustAuth, confirmOrderByuser);
 
 export default router;  
