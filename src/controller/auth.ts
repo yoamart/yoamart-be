@@ -79,15 +79,22 @@ export const signIn: RequestHandler = async (req, res) => {
     { expiresIn: '1d' }
   );
 
-  // user.token = token;
-  // await user.save();
+  user.token = token;
+  await user.save();
 
   res.json({ token });
 };
 
 
 export const generateForgetPasswordLink: RequestHandler = async (req, res) => {
-  const { email } = req.body;
+  const { email, captcha } = req.body;
+
+  const response = await axios.post(
+    `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
+  );
+  if (!response.data.success) {
+    return res.status(403).json({ message: "Invalid captcha" })
+  }
 
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ error: "Account not found!" });

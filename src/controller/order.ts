@@ -59,11 +59,13 @@ export const getAllUserOrders: RequestHandler = async (req, res) => {
 };
 
 export const getOrderById: RequestHandler = async (req, res) => {
+
     const userId = req.user.id;
 
     const user = await User.findOne({ _id: userId });
     if (!user) res.status(403).json({ error: "Unauthorized request!" })
     const orderId = req.params.orderId; // Access orderId directly from req.params
+
     const order = await Order.findOne({ userId: userId, _id: orderId });
     if (!order) return res.status(400).json({ message: "Cannot find order!" });
 
@@ -331,15 +333,15 @@ export const createOrder: RequestHandler = async (req, res) => {
         }
 
         // Send order confirmation email
-        await sendOrderConfirmationEmail(
-            userName,
-            userEmail,
-            orderNumber,
-            orderDate,
-            productList,    // Send the product list
-            totalPrice,     // Send the total amount
-            cart.length     // Send the number of products in the order
-        );
+        // await sendOrderConfirmationEmail(
+        //     userName,
+        //     userEmail,
+        //     orderNumber,
+        //     orderDate,
+        //     productList,    // Send the product list
+        //     totalPrice,     // Send the total amount
+        //     cart.length     // Send the number of products in the order
+        // );
 
         res.status(201).json({
             message: "Order created successfully!",

@@ -10,8 +10,7 @@ import mongoose from "mongoose";
 interface ProductSearchResult {
   name: string;
   price: number;
-  category: string | null;
-  categoryId: string | null;
+  categoryId: categorySearchResult | null;
   image: string[];
   discount: number;
   inStock: boolean;
@@ -102,8 +101,9 @@ export const getAllProducts: RequestHandler = async (req, res) => {
     const fetchedProduct = products.map<ProductSearchResult>((product) => ({
       name: product.name,
       price: product.price,
-      category: product.categoryId?.name || null,
-      categoryId: product.categoryId._id.toString() || null,
+      categoryId: product.categoryId
+        ? { _id: product.categoryId._id.toString(), name: product.categoryId.name }
+        : null,
       image: product.image,
       discount: product.discount,
       inStock: product.inStock,
@@ -111,6 +111,7 @@ export const getAllProducts: RequestHandler = async (req, res) => {
       quantity: product.quantity,
       description: product.description,
     }));
+
 
     // Get the total count of products matching the filters
     const totalProducts = await Product.countDocuments(query);
@@ -133,11 +134,17 @@ export const getAllProducts: RequestHandler = async (req, res) => {
 
 export const getProductById: RequestHandler = async (req, res) => {
   const { productId } = req.params;
-  const product = await Product.findById(productId);
-  if (!product)
-    return res.status(400).json({ message: "Something went wrong!" });
-  res.json({ product });
+  try {
+    const product = await Product.findById(productId).populate('categoryId', 'name'); // Populating the category and selecting the 'name' field
+    if (!product) {
+      return res.status(400).json({ message: "Product not found!" });
+    }
+    res.json({ product });
+  } catch (error) {
+    return res.status(500).json({ message: "Something went wrong!", error });
+  }
 };
+
 
 export const createProduct: RequestHandler = async (req, res) => {
   // const user = req.user.id;
@@ -242,7 +249,7 @@ export const addToFavourite: RequestHandler = async (req, res) => {
 
 export const getUserFavorites: RequestHandler = async (req, res) => {
   // const userId = req.user.id;
-const userId = (req as Request).user.id;
+  const userId = (req as Request).user.id;
   //   console.log(req.headers);
 
   try {
@@ -263,9 +270,9 @@ const userId = (req as Request).user.id;
 };
 
 export const deleteUserFavourite: RequestHandler = async (req, res) => {
-//  const userId = req.user.id;
-const userId = (req as Request).user.id;  
-const user = await User.findById(userId);
+  //  const userId = req.user.id;
+  const userId = (req as Request).user.id;
+  const user = await User.findById(userId);
   if (!user) return res.status(400).json({ message: "User not found" });
 
   // Set the favourite array to an empty array
@@ -421,10 +428,10 @@ export const sortProducts: RequestHandler = async (req, res) => {
   const currentPage = parseInt(page as string, 10);
   const pageLimit = parseInt(limit as string, 10);
   if (isNaN(currentPage) || currentPage <= 0) {
-      return res.status(400).json({ message: "Invalid page parameter. It must be a positive number." });
+    return res.status(400).json({ message: "Invalid page parameter. It must be a positive number." });
   }
   if (isNaN(pageLimit) || pageLimit <= 0) {
-      return res.status(400).json({ message: "Invalid limit parameter. It must be a positive number." });
+    return res.status(400).json({ message: "Invalid limit parameter. It must be a positive number." });
   }
 
   try {
