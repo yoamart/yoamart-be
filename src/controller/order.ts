@@ -333,15 +333,15 @@ export const createOrder: RequestHandler = async (req, res) => {
         }
 
         // Send order confirmation email
-        // await sendOrderConfirmationEmail(
-        //     userName,
-        //     userEmail,
-        //     orderNumber,
-        //     orderDate,
-        //     productList,    // Send the product list
-        //     totalPrice,     // Send the total amount
-        //     cart.length     // Send the number of products in the order
-        // );
+        await sendOrderConfirmationEmail(
+            userName,
+            userEmail,
+            orderNumber,
+            orderDate,
+            productList,    // Send the product list
+            totalPrice,     // Send the total amount
+            cart.length     // Send the number of products in the order
+        );
 
         res.status(201).json({
             message: "Order created successfully!",

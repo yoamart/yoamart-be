@@ -21,6 +21,7 @@ export const createUser: RequestHandler = async (req, res) => {
     const response = await axios.post(
       `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
     );
+
     if (!response.data.success) {
       return res.status(403).json({ message: "Invalid captcha" })
     }
@@ -28,7 +29,7 @@ export const createUser: RequestHandler = async (req, res) => {
     if (userExist) {
       return res.status(403).json({ message: "Email already exists!" });
     }
-    const user = await User.create({ name, email, password, phone });
+    const user = await User.create({ name, email, password });
 
     // const token = generateToken();
     // await verificationTokenModel.create({ userId: user._id, token });
@@ -110,9 +111,9 @@ export const generateForgetPasswordLink: RequestHandler = async (req, res) => {
     `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
   );
 
-  // if (!response.data.success) {
-  //   return res.status(403).json({ message: "Invalid captcha" })
-  // }
+  if (!response.data.success) {
+    return res.status(403).json({ message: "Invalid captcha" })
+  }
 
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ error: "Account not found!" });

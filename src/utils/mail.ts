@@ -238,7 +238,7 @@ client
       const ORDER_EMAIL = process.env.ORDER_EMAIL as string
       
         // const client = new MailtrapClient( clientConfig );  
-          const message = `Dear ${name} we just received your order from Yoamaet <br/>
+          const message = `Dear ${name} we just received your order from Yoamart <br/>
           product name: ${product} <br/>
           quantity: ${quantity} <br/>
           price: ${price} <br/>
