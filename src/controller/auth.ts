@@ -109,9 +109,10 @@ export const generateForgetPasswordLink: RequestHandler = async (req, res) => {
   const response = await axios.post(
     `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
   );
-  if (!response.data.success) {
-    return res.status(403).json({ message: "Invalid captcha" })
-  }
+
+  // if (!response.data.success) {
+  //   return res.status(403).json({ message: "Invalid captcha" })
+  // }
 
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ error: "Account not found!" });
@@ -131,7 +132,7 @@ export const generateForgetPasswordLink: RequestHandler = async (req, res) => {
   // const resetLink = `${PASSWORD_RESET_LINK}?token=${token}&userId=${user._id}`;
   const resetLink = `${req.headers.origin}/my-account/change-password/?token=${token}&userId=${user._id}`;
 
-  sendForgetPasswordLink({ email: user.email, link: resetLink });
+  sendForgetPasswordLink({ email: user.email, link: resetLink, name: user.name });
 
   res.json({ message: "Check your registered mail" });
 };

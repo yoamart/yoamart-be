@@ -35,71 +35,94 @@ const client = new MailtrapClient(clientConfig);
 interface Options{
   email: string;
   link: string;
+  name: string;
 }
 
 interface MailtrapClientConfig {
-endpoint: string;
+// endpoint: string;
 token: string;
 }
 
 export const sendForgetPasswordLink = async (options: Options) =>{ 
     // const transport = generateMailTransporter()
-    const {email, link} = options
+    try {
+      const {email, link, name} = options
 
-    const message = "We just received a request that you forget your password. No problem you can use the link below and create brand new password.";
-
-
-    const sender = {
-      email: VERIFICATION_EMAIL,
-      name: "Yoamart",
-    };
-    const recipients = [
-      {
-        email: email,
-      }
-    ];
-
-    const logoImage = fs.readFileSync(path.join(__dirname, "../mail/yoamart-logo.png"))
-    const forgetPasswordImage = fs.readFileSync(path.join(__dirname, "../mail/forget_password.png"))
-
-    client
-      .send({
-        from: sender,
-        to: recipients,
-        subject: "Forget Password Email!",
-        html: generateTemplate({
-          title: 'Forget Password',
-          message,
-          logo: "cid:logo",
-          banner: "cid:forget_password",
-          link,
-          btnTitle: "Reset Password"
-        }),
-      attachments:[
+      // const message = "We just received a request that you forget your password. No problem you can use the link below and create brand new password.";
+  
+  
+      const sender = {
+        email: VERIFICATION_EMAIL,
+        name: "Yoamart",
+      };
+      const recipients = [
         {
-          filename: "logo.png",
-          content_id: "logo",
-          content: logoImage,
-          disposition: "inline",
-          type: "image/png"
-        },
-        {
-          filename: "forget_password.png",
-          content_id: "forget_password",
-          content: forgetPasswordImage,
-          disposition: "inline",
-          type: "image/png"
+          email
         }
-      ],
-      category: "Forget Password Link",
-    
-      })
+      ];
+  
+      // const logoImage = fs.readFileSync(path.join(__dirname, "../mail/yoamart-logo.png"))
+      // const forgetPasswordImage = fs.readFileSync(path.join(__dirname, "../mail/forget_password.png"))
+  
+      // client
+      //   .send({
+      //     from: sender,
+      //     to: recipients,
+      //     subject: "Forget Password Email!",
+      //     html: generateTemplate({
+      //       title: 'Forget Password',
+      //       message,
+      //       logo: "cid:logo",
+      //       banner: "cid:forget_password",
+      //       link,
+      //       btnTitle: "Reset Password"
+      //     }),
+      //   attachments:[
+      //     {
+      //       filename: "logo.png",
+      //       content_id: "logo",
+      //       content: logoImage,
+      //       disposition: "inline",
+      //       type: "image/png"
+      //     },
+      //     {
+      //       filename: "forget_password.png",
+      //       content_id: "forget_password",
+      //       content: forgetPasswordImage,
+      //       disposition: "inline",
+      //       type: "image/png"
+      //     }
+      //   ],
+      //   category: "Forget Password Link", 
+      
+      //   })
+
+      
+
+// const client = new MailtrapClient({
+//   token: TOKEN,
+// });
+
+
+client
+  .send({
+    from: sender,
+    to: recipients,
+    template_uuid: "b170cbae-7410-4e5f-a6e1-1489aac7848f",
+    template_variables: {
+      "user_name": name,
+      "next_step_link": link,
+    }
+  })
+  
+    } catch (error) {
+      return error
+    }
 
   
     }
 
   export const sendPassResetSuccessEmail = async (name:string, email:string) =>{ 
-        // const transport = generateMailTransporter()
         
     const sender = {
       email: VERIFICATION_EMAIL,
@@ -110,11 +133,12 @@ export const sendForgetPasswordLink = async (options: Options) =>{
         email: email,
       }
     ];
-        client
-        .send({
+
+  client
+  .send({
     from: sender,
     to: recipients,
-    template_uuid: "3f8c9528-2a56-49b6-abcf-a82005370089",
+    template_uuid: "a0dedad3-8a43-4bf5-b778-d02af986e115",
     template_variables: {
       "user_name": name,
     }
@@ -135,11 +159,11 @@ export const sendForgetPasswordLink = async (options: Options) =>{
       }
     ];
 
-   client
+  client
   .send({
     from: sender,
     to: recipients,
-    template_uuid: "2fabfd3a-ebe1-42c2-a86b-dd27fbca842c",
+    template_uuid: "15f17019-a3be-4873-8522-d92d5bcba305",
     template_variables: {
       "user_name": name,
       "order_number": orderNumber,
@@ -150,7 +174,9 @@ export const sendForgetPasswordLink = async (options: Options) =>{
     }
   })
 
+
     }
+
     export const paymentConfirmationEmail = async (name:string, email:string, orderNumber: string, orderDate: any, totalAmount: number) =>{ 
         // const transport = generateMailTransporter()
         
@@ -168,7 +194,7 @@ export const sendForgetPasswordLink = async (options: Options) =>{
    .send({
      from: sender,
      to: recipients,
-     template_uuid: "cf5f2ce9-497b-4876-814f-01db0ae1e64c",
+     template_uuid: "5103e602-d03f-433a-afec-c8f2fbec81ba",
      template_variables: {
        "user_name": name,
        "order_number": orderNumber,
@@ -176,6 +202,7 @@ export const sendForgetPasswordLink = async (options: Options) =>{
        "amount": totalAmount,
      }
    })
+ 
 
     }
 
@@ -289,3 +316,5 @@ export const sendForgetPasswordLink = async (options: Options) =>{
           //       ]
           //     })
         }
+
+
