@@ -10,8 +10,9 @@ interface ProductDocument{
     quantity: number;
     description: string;
     topSelling: number;
-    featured: "yes" | "no";
     discount: number;
+    isFeatured: boolean;
+    isHot: boolean;
     inStock: boolean
 }
 
@@ -49,13 +50,17 @@ const productSchema = new Schema<ProductDocument>({
         type: Number,
         default: 0
     },
-    featured:{
-        type: String,
-        default: 'no'
-    },
     discount:{
         type: Number,
         default: 0
+    },
+    isFeatured:{
+        type: Boolean,
+        default: false
+    },
+    isHot:{
+        type: Boolean,
+        default: false
     },
     inStock:{
         type: Boolean,

@@ -456,18 +456,58 @@ export const sortProducts: RequestHandler = async (req, res) => {
   }
 };
 
+export const toggleFeaturedProduct: RequestHandler = async (req, res) => {
+  try {
+    const { productId } = req.body;
 
+    // Find the product by ID
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(422).json({ message: "Product not found!" });
+    }
 
+    // Toggle the `isFeatured` field
+    product.isFeatured = !product.isFeatured;
 
+    // Save the updated product to the database
+    await product.save();
 
+    // Respond with success message
+    res.status(200).json({
+      message: `Product has been ${product.isFeatured ? "featured" : "unfeatured"} successfully!`,
+      product,
+    });
+  } catch (error) {
+    console.error("Error toggling featured status:", error);
+    res.status(500).json({ message: "Internal Server Error", error });
+  }
+};
 
-// export const topSelling: RequestHandler = async (req, res) =>{
-//   const {productId} = req.body
-//   const product = await Product.findById(productId)
-//   if(!product) return res.status(422).json({message: "Cannot display product!"})
-//     const order = await Order.cart.findOne({productId: id})
-//   if(!order) return res.status(422).json({message: "Cannot display product!"})
-//     if(order){
-//       await product.quantity - order.cart.quantity
-//     }
-// }
+export const setHotProduct: RequestHandler = async (req, res) => {
+  try {
+    const { productId } = req.body;
+
+    // Check if the product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(422).json({ message: "Product not found!" });
+    }
+
+    // Update all products to set `isHot` to false
+    await Product.updateMany({ isHot: true }, { $set: { isHot: false } });
+
+    // Set the selected product as `isHot`
+    product.isHot = true;
+    await product.save();
+
+    // Respond with success message
+    res.status(200).json({
+      message: `Product with ID ${productId} is now marked as hot.`,
+      product,
+    });
+  } catch (error) {
+    console.error("Error setting hot product:", error);
+    res.status(500).json({ message: "Internal Server Error", error });
+  }
+};
+
