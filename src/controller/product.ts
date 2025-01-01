@@ -26,6 +26,7 @@ interface categorySearchResult {
 
 
 
+
 export const getAllProducts: RequestHandler = async (req, res) => {
   const { page = 1, limit = 10, category, min, max, sort, inStock, outOfStock } = req.query;
 
@@ -110,6 +111,8 @@ export const getAllProducts: RequestHandler = async (req, res) => {
       _id: product._id.toString(),
       quantity: product.quantity,
       description: product.description,
+      isFeatured: product.isFeatured,
+      isHot: product.isHot,
     }));
 
 
@@ -474,7 +477,7 @@ export const toggleFeaturedProduct: RequestHandler = async (req, res) => {
 
     // Respond with success message
     res.status(200).json({
-      message: `Product has been ${product.isFeatured ? "featured" : "unfeatured"} successfully!`,
+      message: `${product.name} has been ${product.isFeatured ? "added to" : "removed from"} best sellers successfully!`,
       product,
     });
   } catch (error) {
@@ -502,7 +505,7 @@ export const setHotProduct: RequestHandler = async (req, res) => {
 
     // Respond with success message
     res.status(200).json({
-      message: `Product with ID ${productId} is now marked as hot.`,
+      message: `${product.name} successfully set as Hot Product.`,
       product,
     });
   } catch (error) {

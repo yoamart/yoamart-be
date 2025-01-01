@@ -33,7 +33,7 @@ router.post("/stock", mustAuth, isAdmin, toggleProductStock)
 router.get("/export/csv", exportProductToCSV)
 router.get("/filter/search", filterProductsSearch)
 router.get("/sort/search", sortProducts)
-router.get("/isFeatured", toggleFeaturedProduct)
-router.get("isHot", setHotProduct)
+router.post("/isFeatured", toggleFeaturedProduct)
+router.post("/isHot", setHotProduct)
 
 export default router;

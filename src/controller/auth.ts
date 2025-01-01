@@ -57,6 +57,15 @@ export const createUser: RequestHandler = async (req, res) => {
 export const signIn: RequestHandler = async (req, res) => {
   const { email, password, captcha } = req.body;
 
+
+  const response = await axios.post(
+    `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
+  );
+  if (!response.data.success) {
+    return res.status(403).json({ message: "Invalid captcha" });
+  }
+
+
   // Find the user by email
   const user = await User.findOne({ email });
 
@@ -64,16 +73,6 @@ export const signIn: RequestHandler = async (req, res) => {
     return res
       .status(403)
       .json({ message: "Email/Phone or Password Mismatch!" });
-
-  // Check if the user's role is NOT admin before validating captcha
-  if (user.role !== "admin") {
-    const response = await axios.post(
-      `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.CAPTCHA_SECRET_KEY}&response=${captcha}`
-    );
-    if (!response.data.success) {
-      return res.status(403).json({ message: "Invalid captcha" });
-    }
-  }
 
   // Compare password
   const matched = await user.comparePassword(password);
