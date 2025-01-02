@@ -482,10 +482,7 @@ export const getSalesAndOrdersByMonth: RequestHandler = async (req, res) => {
 };
 
 
-import { RequestHandler } from "express";
-import Order from "../models/Order";
-import User from "../models/User";
-import mongoose from "mongoose";
+
 
 export const getDashboardSummary: RequestHandler = async (req, res) => {
     try {

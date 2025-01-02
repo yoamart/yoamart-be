@@ -433,3 +433,38 @@ export const deliveredOrderEmail = async (
     }
   });
 }
+
+
+export const contactAdminEmail = async (
+  name: string,
+  email: string,
+  subject: string,
+  message: string
+) => {
+  // Define the sender and recipient details
+  const sender = {
+    email: VERIFICATION_EMAIL, // Sender's email, e.g., Yoamart's support email
+    name: "Yoamart",  // Sender's name (could be Yoamart support team)
+  };
+
+  const recipients = [
+    {
+      email: "yoasupermarket@gmail.com",  // Admin's email to receive the contact message
+    }
+  ];
+
+
+
+  // Sending the email using the template and variables
+  client.send({
+    from: sender,
+    to: recipients,
+    template_uuid: "2204dc6b-f716-447c-9c68-e16843d333ff",  // Use your actual template UUID
+    template_variables: {
+      "user_name": name,
+      "user_email": email,
+      "subject": subject,
+      "message_content": message,  // This holds the formatted contact message
+    }
+  });
+};

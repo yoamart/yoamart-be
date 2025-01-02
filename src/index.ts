@@ -11,6 +11,8 @@ import blogRouter from './routers/blog'
 import paymentRouter from './routers/payment';
 import brandRouter from './routers/brand';
 import searchRouter from './routers/search';
+import newsletterRouter from './routers/newsletter';
+import contactRouter from './routers/contact';
 
 
 const app = express();
@@ -33,6 +35,9 @@ app.use('/api/payment', paymentRouter);
 app.use('/api/blog', blogRouter);
 app.use('/api/brand', brandRouter)
 app.use('/api/search', searchRouter)
+app.use('/api/newsletter', newsletterRouter)
+app.use('/api/contact', contactRouter)
+
 
 app.use(function (err, req, res, next) {
   res.status(500).json({ message: err.message })
