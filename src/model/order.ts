@@ -25,6 +25,7 @@ export interface OrderDocument {
   orderNumber: string;
   note: string;
   orderDate: Date;
+  updatedAt: Date;
 }
 
 const orderSchema = new Schema<OrderDocument>(
@@ -103,6 +104,10 @@ const orderSchema = new Schema<OrderDocument>(
       type: Date,
       required: false,
     },
+    updatedAt: {
+      type: Date,
+      required: false,
+    }
   },
   { timestamps: true }
 );

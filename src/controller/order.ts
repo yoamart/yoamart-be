@@ -4,7 +4,7 @@ import { RequestHandler } from "express";
 import Order from "#/model/order";
 import User from "#/model/user";
 import Shipping from "#/model/shipping";
-import { paymentConfirmationEmail, sendOrderConfirmationEmail } from "#/utils/mail";
+import { deliveredOrderEmail, paymentConfirmationEmail, sendOrderConfirmationEmail, sendOrderConfirmationEmailAdmin, shippedOrderEmail } from "#/utils/mail";
 import product from "#/model/product";
 import { generateOrderNumber } from "#/utils/tokenHelper";
 
@@ -118,12 +118,71 @@ export const confirmedOrderStatus: RequestHandler = async (req, res) => {
     const shipping = await Shipping.findOne({ orderId });
     if (!shipping) return res.status(400).json({ message: "Cannot find shipping document!" });
 
+
+    let productListTable = `
+    <table width="100%" cellspacing="0" cellpadding="5" border="1" style="border: 1px solid #ddd; border-collapse: collapse; text-align: left;">
+      <thead>
+        <tr>
+          <th style="padding: 8px; background-color: #f4f4f4;">Product</th>
+          <th style="padding: 8px; background-color: #f4f4f4;">Quantity</th>
+        </tr>
+      </thead>
+      <tbody>
+    `;
+
+    for (const cartItem of order.cart) {
+        const productId = cartItem.id;
+        const productExist = await product.findById(productId);
+
+        if (!productExist) {
+            return res.status(422).json({ message: `Product with ID: ${productId} not found` });
+        }
+
+        // Decrease product quantity and update top selling field
+        const purchaseQuantity = parseInt(cartItem.quantity, 10); // Ensure quantity is a number
+
+
+        // Add the product details in the HTML table row
+        productListTable += `
+          <tr>
+              <td style="padding: 8px;">${productExist.name}</td>
+              <td style="padding: 8px;">${purchaseQuantity}</td>
+          </tr>
+      `;
+    }
+
+    // Close the table structure
+    productListTable += `
+      </tbody>
+    </table>
+    `;
+
+
+
+
+
     if (order.orderStatus === "pending") {
         order.orderStatus = "shipped";
         shipping.status = 'shipped';
+        order.updatedAt = new Date();
+
+        const formattedOrderDate = new Intl.DateTimeFormat("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }).format(new Date(order?.updatedAt));
+
+        await shippedOrderEmail(order.name, order.email, order.orderNumber, formattedOrderDate, productListTable);
     } else if (order.orderStatus === 'shipped') {
         order.orderStatus = 'completed';
         shipping.status = 'completed';
+        order.updatedAt = new Date();
+
+        const formattedOrderDate = new Intl.DateTimeFormat("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }).format(new Date(order?.updatedAt));
+
+        await deliveredOrderEmail(order.name, order.email, order.orderNumber, formattedOrderDate, productListTable, order._id);
     } else {
         return res.status(400).json({ message: "Order already completed!" });
     }
@@ -183,88 +242,6 @@ export const getAllOrders: RequestHandler = async (req, res) => {
     res.json({ allOrders });
 }
 
-// export const createOrder: RequestHandler = async (req, res) => {
-//     const userId = req.user.id;
-//     const userName = req.user.name;
-//     const userEmail = req.user.email;
-
-//     try {
-//         const { name, email, phone, address, cart: cartString, totalPrice, proofOfPayment } = req.body;
-
-//         // Parse the stringified cart into a JavaScript object
-//         const cart = JSON.parse(cartString);
-
-//         // Validate the parsed cart
-//         if (!cart || cart.length === 0) {
-//             return res.status(400).json({ message: "Cart is empty!" });
-//         }
-//         const orderNumber = generateOrderNumber(10)
-//        const orderDate = new Date().toISOString().slice(0, 10);
-//         // Create a new order
-//         const order = new Order({
-//             userId,
-//             name,
-//             email,
-//             mobile: phone,
-//             address,
-//             total: totalPrice,
-//             cart,  // Save the parsed cart to the order
-//             proofOfPayment,
-//             orderStatus: "pending",
-//             isPaid: false,
-//             orderNumber,
-//             orderDate
-//         });
-
-//         // Save the order to the database
-//         await order.save();
-
-//         // Create a shipping entry for the order
-//         const shipping = new Shipping({
-//             orderId: order._id,
-//             name,
-//             email,
-//             address,
-//             phone,
-//         });
-//         await shipping.save();
-
-//         // Update product stock and top selling products
-//         for (const cartItem of cart) {
-//             const productId = cartItem.id;
-//             const productExist = await product.findById(productId);
-
-//             if (!productExist) {
-//                 return res.status(422).json({ message: `Product with ID: ${productId} not found` });
-//             }
-
-//             // Decrease product quantity and update top selling field
-//             const purchaseQuantity = parseInt(cartItem.quantity, 10); // Ensure quantity is a number
-//             productExist.quantity -= purchaseQuantity;
-//             productExist.topSelling = Math.max(productExist.topSelling, purchaseQuantity);
-
-//             // Mark the product as out of stock if needed
-//             if (productExist.quantity <= 0) {
-//                 productExist.inStock = false;
-//             }
-
-//             // Save the updated product
-//             await productExist.save();
-//         }
-//             const products = cart.map((item: any) => item.id);
-//         // Send order confirmation email
-//         await sendOrderConfirmationEmail(userName, userEmail, orderNumber, orderDate,  );
-
-//         res.status(201).json({
-//             message: "Order created successfully!",
-//             orderId: order._id,
-//             order,
-//         });
-//     } catch (error) {
-//         console.error("Error creating order:", error);
-//         res.status(500).json({ message: "Failed to create order" });
-//     }
-// };
 
 export const createOrder: RequestHandler = async (req, res) => {
     const userId = req.user.id;
@@ -282,7 +259,6 @@ export const createOrder: RequestHandler = async (req, res) => {
             return res.status(400).json({ message: "Cart is empty!" });
         }
         const orderNumber = generateOrderNumber(4);
-        const orderDate = new Date().toISOString().slice(0, 10);
 
         // Create a new order
         const order = new Order({
@@ -296,52 +272,11 @@ export const createOrder: RequestHandler = async (req, res) => {
             orderStatus: "pending",
             isPaid: "unpaid",
             orderNumber,
-            orderDate
         });
 
 
         // Save the order to the database
         await order.save();
-
-
-
-        // Prepare product names and quantities for the email
-        let productList = '';
-        for (const cartItem of cart) {
-            const productId = cartItem.id;
-            const productExist = await product.findById(productId);
-
-            if (!productExist) {
-                return res.status(422).json({ message: `Product with ID: ${productId} not found` });
-            }
-
-            // Decrease product quantity and update top selling field
-            const purchaseQuantity = parseInt(cartItem.quantity, 10); // Ensure quantity is a number
-            productExist.quantity -= purchaseQuantity;
-            productExist.topSelling = Math.max(productExist.topSelling, purchaseQuantity);
-
-            // Mark the product as out of stock if needed
-            if (productExist.quantity <= 0) {
-                productExist.inStock = false;
-            }
-
-            // Save the updated product
-            await productExist.save();
-
-            // Append product name and quantity to the list for the email
-            productList += `Product: ${productExist.name}, Quantity: ${purchaseQuantity}\n`;
-        }
-
-        // Send order confirmation email
-        await sendOrderConfirmationEmail(
-            userName,
-            userEmail,
-            orderNumber,
-            orderDate,
-            productList,    // Send the product list
-            totalPrice,     // Send the total amount
-            cart.length     // Send the number of products in the order
-        );
 
         res.status(201).json({
             message: "Order created successfully!",
@@ -374,6 +309,8 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
         order.mobile = phone;
         order.address = address;
         order.note = note;
+        order.orderDate = new Date();
+
 
         await order.save();
 
@@ -387,6 +324,85 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             note,
         });
         await shipping.save();
+
+        // Prepare product names and quantities for the email in HTML table format
+        let productListTable = `
+<table width="100%" cellspacing="0" cellpadding="5" border="1" style="border: 1px solid #ddd; border-collapse: collapse; text-align: left;">
+  <thead>
+    <tr>
+      <th style="padding: 8px; background-color: #f4f4f4;">Product</th>
+      <th style="padding: 8px; background-color: #f4f4f4;">Quantity</th>
+    </tr>
+  </thead>
+  <tbody>
+`;
+
+        for (const cartItem of order.cart) {
+            const productId = cartItem.id;
+            const productExist = await product.findById(productId);
+
+            if (!productExist) {
+                return res.status(422).json({ message: `Product with ID: ${productId} not found` });
+            }
+
+            // Decrease product quantity and update top selling field
+            const purchaseQuantity = parseInt(cartItem.quantity, 10); // Ensure quantity is a number
+            productExist.quantity -= purchaseQuantity;
+            productExist.topSelling = Math.max(productExist.topSelling, purchaseQuantity);
+
+            // Mark the product as out of stock if needed
+            if (productExist.quantity <= 0) {
+                productExist.inStock = false;
+            }
+
+            // Save the updated product
+            await productExist.save();
+
+            // Add the product details in the HTML table row
+            productListTable += `
+      <tr>
+          <td style="padding: 8px;">${productExist.name}</td>
+          <td style="padding: 8px;">${purchaseQuantity}</td>
+      </tr>
+  `;
+        }
+
+        // Close the table structure
+        productListTable += `
+  </tbody>
+</table>
+`;
+
+        const formattedOrderDate = new Intl.DateTimeFormat("en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }).format(new Date(order?.orderDate));
+
+        const formattedAmount = new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+        }).format(order.total);
+
+        // Send order confirmation email with the HTML table
+        await sendOrderConfirmationEmail(
+            order.name,
+            order.email,
+            orderNumber,
+            formattedOrderDate,
+            productListTable,  // Send the table of products
+            formattedAmount,   // Send the total amount
+            order.cart.length   // Send the number of products in the order
+        );
+
+        await sendOrderConfirmationEmailAdmin(
+            order.name,
+            order.email,
+            orderNumber,
+            formattedOrderDate,
+            productListTable,  // Send the table of products
+            formattedAmount,     // Send the total amount
+            order.cart.length     // Send the number of products in the order
+        );
 
         res.status(200).json({
             message: "Order updated to processing successfully!",
@@ -409,13 +425,104 @@ export const confirmedOrderPaymentStatus: RequestHandler = async (req, res) => {
 
     if (order.isPaid === "processing") {
         order.isPaid = "paid";
+        order.updatedAt = new Date();
 
     } else {
         return res.status(400).json({ message: "Order payment already confirmed!" });
     }
 
+    const formattedUpdatedAt = new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+    }).format(order.updatedAt);
+
+    const formattedAmount = new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+    }).format(order.total);
+
     await order.save();
-    await paymentConfirmationEmail(order.name, order.email, order.orderNumber, order.orderDate, order.total);
+    await paymentConfirmationEmail(order.name, order.email, order.orderNumber, formattedUpdatedAt, formattedAmount);
 
     res.json({ message: "Order payment verified successfully!" });
+};
+
+
+
+export const getSalesAndOrdersByMonth: RequestHandler = async (req, res) => {
+    try {
+        const salesData = await Order.aggregate([
+            {
+                $group: {
+                    _id: { $month: "$createdAt" }, // Group by the month of the createdAt date
+                    totalSales: { $sum: "$total" }, // Sum the total sales
+                    totalOrders: { $sum: 1 }, // Count the total number of orders
+                },
+            },
+            {
+                $sort: { _id: 1 }, // Sort by month
+            },
+        ]);
+
+        // Format the response for frontend use
+        const response = salesData.map((item) => ({
+            month: new Date(0, item._id - 1).toLocaleString("default", {
+                month: "long",
+            }), // Convert month number to month name
+            totalSales: item.totalSales,
+            totalOrders: item.totalOrders,
+        }));
+
+        res.status(200).json({
+            sales: response,
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching sales data", error });
+    }
+};
+
+
+import { RequestHandler } from "express";
+import Order from "../models/Order";
+import User from "../models/User";
+import mongoose from "mongoose";
+
+export const getDashboardSummary: RequestHandler = async (req, res) => {
+    try {
+        // Get the first day of the last month
+        const now = new Date();
+        const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+        // Query for total sales since last month
+        const salesData = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: firstDayLastMonth },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalSales: { $sum: "$total" },
+                    totalOrders: { $sum: 1 },
+                },
+            },
+        ]);
+
+        const totalSales = salesData[0]?.totalSales || 0;
+        const totalOrders = salesData[0]?.totalOrders || 0;
+
+        // Query for total users
+        const totalUsers = await User.countDocuments({ role: { $ne: "admin" } });
+
+        // Send response
+        res.json({
+            totalSales,
+            totalOrders,
+            totalUsers,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to fetch dashboard summary" });
+    }
 };
