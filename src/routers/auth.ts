@@ -1,4 +1,4 @@
-import { createUser, generateForgetPasswordLink, getAllUsers, getTotalUsers, isValidPasswordReset, sendProfile, signIn, updatePassword, updateProfile } from "#/controller/auth";
+import { createAdmin, createUser, generateForgetPasswordLink, getAllUsers, getTotalUsers, isValidPasswordReset, sendProfile, signIn, updatePassword, updateProfile } from "#/controller/auth";
 import { isAdmin, isValidPasswordResetToken, mustAuth } from "#/middleware/user";
 import { validate } from "#/middleware/validator";
 import { SignInValidationSchema, TokenAndIDValidation, UpdatePasswordSchema, userValidation } from "#/utils/validationSchema";
@@ -15,5 +15,7 @@ router.patch('/update-profile', mustAuth, updateProfile)
 router.get('/total-user', mustAuth, getTotalUsers)
 router.get('/all-user', getAllUsers)
 router.get('/profile', mustAuth, sendProfile)
+router.post('/create-admin', mustAuth, isAdmin, createAdmin)
+
 
 export default router;
