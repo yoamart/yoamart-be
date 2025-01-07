@@ -1,24 +1,20 @@
 import { Model, Schema, model, ObjectId } from "mongoose";
 
-interface Shipping{
-    _id?: ObjectId;
-    name: string;
-    email: string;
-    address: string;
-    phone: string;
-    note?: string;
+interface Shipping {
+    _id: ObjectId;
     orderId: ObjectId;
-    status: "pending" | "shipped" | "completed";
+    driverId: ObjectId;
+    deliveryDate: Date;
+    shippedDate: Date;
+    expectedDeliveryDate: Date;
 }
 
 const shippingSchema = new Schema<Shipping>({
-    name: {type: String, required: true},
-    email: {type: String, required: true},
-    address: {type: String, required: true},
-    phone: {type: String, required: true},
-    note: {type: String, required: false},
-    orderId: {type: Schema.Types.ObjectId, required: true, ref: "Order"},
-    status: {type: String, required: true, default: "pending"}
-}, {timestamps: true});
+    driverId: { type: Schema.Types.ObjectId, required: true, ref: "Driver" },
+    deliveryDate: { type: Date, required: false },
+    shippedDate: { type: Date, required: false },
+    expectedDeliveryDate: { type: Date, required: true },
+    orderId: { type: Schema.Types.ObjectId, required: true, ref: "Order" },
+}, { timestamps: true });
 
 export default model("Shipping", shippingSchema) as Model<Shipping>;

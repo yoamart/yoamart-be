@@ -13,6 +13,7 @@ import brandRouter from './routers/brand';
 import searchRouter from './routers/search';
 import newsletterRouter from './routers/newsletter';
 import contactRouter from './routers/contact';
+import driverRouter from './routers/driver';
 
 
 const app = express();
@@ -37,7 +38,8 @@ app.use('/api/brand', brandRouter)
 app.use('/api/search', searchRouter)
 app.use('/api/newsletter', newsletterRouter)
 app.use('/api/contact', contactRouter)
-
+app.use('/api/driver', driverRouter)
+ 
 
 app.use(function (err, req, res, next) {
   res.status(500).json({ message: err.message })

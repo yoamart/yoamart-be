@@ -24,6 +24,8 @@ export interface OrderDocument {
   isPaid: "unpaid" | "processing" | "paid";
   orderNumber: string;
   note: string;
+  shippingFee: number;
+  subTotal: number;
   orderDate: Date;
   updatedAt: Date;
 }
@@ -77,7 +79,15 @@ const orderSchema = new Schema<OrderDocument>(
     ],
     total: {
       type: Number,
+      required: false,
+    },
+    subTotal: {
+      type: Number,
       required: true,
+    },
+    shippingFee: {
+      type: Number,
+      required: false,
     },
     mobile: {
       type: String,

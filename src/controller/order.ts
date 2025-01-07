@@ -7,6 +7,7 @@ import Shipping from "#/model/shipping";
 import { deliveredOrderEmail, paymentConfirmationEmail, sendOrderConfirmationEmail, sendOrderConfirmationEmailAdmin, shippedOrderEmail } from "#/utils/mail";
 import product from "#/model/product";
 import { generateOrderNumber } from "#/utils/tokenHelper";
+import Driver from "#/model/driver";
 
 export const getAllUserOrders: RequestHandler = async (req, res) => {
     try {
@@ -21,49 +22,12 @@ export const getAllUserOrders: RequestHandler = async (req, res) => {
     }
 
 
-    // try {
-    //     const orders = await Order.aggregate([
-    //         { $match: { userId: userId } }, // Filter orders by userId
-    //         {
-    //             $lookup: {
-    //                 from: 'products', // Name of the product collection
-    //                 localField: 'orderId', // Field from the Order collection
-    //                 foreignField: '_id', // Field from the Product collection
-    //                 as: 'order' // Output array field containing the product details
-    //             }
-    //         },
-    //         { $unwind: '$order' }, // Unwind the product array to get individual product details
-    //         {
-    //             $project: {
-    //                 _id: 0, // Exclude _id field
-    //                 orderId: '$_id', // Rename _id field to orderId
-    //                 productName: '$order.name',
-    //                 productPrice: '$product.price',
-    //                 productImage: '$product.image',
-    //                 productQty: '$quantity',
-    //                 address: '$address', // Include address field from Order collection
-    //                 phone: '$phone' // Include phone field from Order collection
-    //                 // Add more fields as needed
-    //             }
-    //         }
-    //     ]);
 
-    //     if (!orders) {
-    //         return res.status(404).json({ message: "No orders found for the user" });
-    //     }
-
-    //     res.json({ orders });
-    // } catch (error) {
-    //     res.status(500).json({ message: "An error occurred while fetching user orders" });
-    // }
 };
 
 export const getOrderById: RequestHandler = async (req, res) => {
 
-    // const userId = req.user.id;
 
-    // const user = await User.findOne({ _id: userId });
-    // if (!user) res.status(403).json({ error: "Unauthorized request!" })
     const orderId = req.params.orderId; // Access orderId directly from req.params
 
     const order = await Order.findOne({ _id: orderId });
@@ -111,97 +75,150 @@ export const getOrderById: RequestHandler = async (req, res) => {
 };
 
 export const confirmedOrderStatus: RequestHandler = async (req, res) => {
-    const orderId = req.params.orderId;
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(400).json({ message: "Cannot find order document!" });
+    try {
+        const orderId = req.params.orderId;
+        const { driverId, expectedDeliveryDate } = req.body;
 
-    const shipping = await Shipping.findOne({ orderId });
-    if (!shipping) return res.status(400).json({ message: "Cannot find shipping document!" });
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(400).json({ message: "Cannot find order document!" });
 
+        let productListTable = `
+        <table width="100%" cellspacing="0" cellpadding="5" border="1" style="border: 1px solid #ddd; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr>
+              <th style="padding: 8px; background-color: #f4f4f4;">Product</th>
+              <th style="padding: 8px; background-color: #f4f4f4;">Quantity</th>
+              <th style="padding: 8px; background-color: #f4f4f4;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
 
-    let productListTable = `
-    <table width="100%" cellspacing="0" cellpadding="5" border="1" style="border: 1px solid #ddd; border-collapse: collapse; text-align: left;">
-      <thead>
-        <tr>
-          <th style="padding: 8px; background-color: #f4f4f4;">Product</th>
-          <th style="padding: 8px; background-color: #f4f4f4;">Quantity</th>
-        </tr>
-      </thead>
-      <tbody>
-    `;
+        for (const cartItem of order.cart) {
+            const productId = cartItem.id;
+            const productExist = await product.findById(productId);
 
-    for (const cartItem of order.cart) {
-        const productId = cartItem.id;
-        const productExist = await product.findById(productId);
+            if (!productExist) {
+                return res.status(422).json({ message: `Product with ID: ${productId} not found` });
+            }
 
-        if (!productExist) {
-            return res.status(422).json({ message: `Product with ID: ${productId} not found` });
+            const purchasePrice = productExist.price * parseInt(cartItem.quantity, 10);
+            const purchaseQuantity = parseInt(cartItem.quantity, 10);
+            const formattedPurchasePrice = new Intl.NumberFormat('en-NG', {
+                style: 'currency',
+                currency: 'NGN',
+            }).format(purchasePrice);
+
+            productListTable += `
+          <tr>
+            <td style="padding: 8px;">${productExist.name}</td>
+            <td style="padding: 8px;">${purchaseQuantity}</td>
+            <td style="padding: 8px;">${formattedPurchasePrice}</td>
+          </tr>
+        `;
         }
 
-        // Decrease product quantity and update top selling field
-        const purchaseQuantity = parseInt(cartItem.quantity, 10); // Ensure quantity is a number
-
-
-        // Add the product details in the HTML table row
         productListTable += `
-          <tr>
-              <td style="padding: 8px;">${productExist.name}</td>
-              <td style="padding: 8px;">${purchaseQuantity}</td>
-          </tr>
+        </tbody>
+      </table>
       `;
+
+
+
+        const formattedsubTotalAmount = new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+        }).format(order.subTotal);
+
+        const formattedShippingFeeAmount = new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+        }).format(order.shippingFee);
+
+        const formattedTotalAmount = new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+        }).format(order.total);
+
+
+
+        if (order.orderStatus === "pending" && driverId && expectedDeliveryDate) {
+            const driver = await Driver.findById(driverId);
+            if (!driver) return res.status(400).json({ message: "Cannot find driver document!" });
+
+            const shipping = new Shipping({
+                orderId: order._id,
+                driverId,
+                expectedDeliveryDate,
+                shippedDate: new Date(),
+            });
+
+            order.orderStatus = "shipped";
+            order.updatedAt = new Date();
+
+            const formattedShippedDate = new Intl.DateTimeFormat("en-US", {
+                dateStyle: "medium",
+                timeStyle: "short",
+            }).format(new Date(shipping.shippedDate));
+
+
+
+            const formattedExpectedDeliveryDate = new Intl.DateTimeFormat("en-US", {
+                dateStyle: "medium",
+            }).format(new Date(expectedDeliveryDate));
+
+
+            await shippedOrderEmail(
+                order.name,
+                order.email,
+                order.orderNumber,
+                formattedShippedDate,
+                productListTable,
+                formattedExpectedDeliveryDate,
+                driver.name,
+                driver.phone,
+            );
+
+            await shipping.save();
+        } else if (order.orderStatus === "shipped") {
+            order.orderStatus = "completed";
+            order.updatedAt = new Date();
+
+            const shipping = await Shipping.findOne({ orderId });
+            if (shipping) {
+                console.log(shipping)
+                shipping.deliveryDate = new Date();
+                await shipping.save();
+            }
+
+            const formattedDeliveryDate = new Intl.DateTimeFormat("en-US", {
+                dateStyle: "medium",
+                timeStyle: "short",
+            }).format(new Date(order.updatedAt));
+
+            await deliveredOrderEmail(
+                order.name,
+                order.email,
+                order.orderNumber,
+                formattedDeliveryDate,
+                productListTable,
+                order._id,
+                // formattedTotalAmount,
+                // formattedShippingFeeAmount,
+                // formattedsubTotalAmount,
+            );
+        } else if (order.orderStatus === "completed") {
+            return res.status(400).json({ message: "Order already completed!" });
+        }
+
+        await order.save();
+
+        res.json({ message: "Order status updated successfully!" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "An error occurred while processing the order." });
     }
-
-    // Close the table structure
-    productListTable += `
-      </tbody>
-    </table>
-    `;
-
-
-
-
-
-    if (order.orderStatus === "pending") {
-        order.orderStatus = "shipped";
-        shipping.status = 'shipped';
-        order.updatedAt = new Date();
-
-        const formattedOrderDate = new Intl.DateTimeFormat("en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-        }).format(new Date(order?.updatedAt));
-
-        await shippedOrderEmail(order.name, order.email, order.orderNumber, formattedOrderDate, productListTable);
-    } else if (order.orderStatus === 'shipped') {
-        order.orderStatus = 'completed';
-        shipping.status = 'completed';
-        order.updatedAt = new Date();
-
-        const formattedOrderDate = new Intl.DateTimeFormat("en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-        }).format(new Date(order?.updatedAt));
-
-        await deliveredOrderEmail(order.name, order.email, order.orderNumber, formattedOrderDate, productListTable, order._id);
-    } else {
-        return res.status(400).json({ message: "Order already completed!" });
-    }
-
-    // // Update shipping status directly based on order status
-    // if (shipping.status === 'pending') {
-    //     shipping.status = 'shipped';
-    // } else if (shipping.status === 'shipped') {
-    //     shipping.status = 'completed';
-    // } else {
-    //     return res.status(400).json({ message: "Order already shipped!" });
-    // }
-
-    await order.save();
-    // await shipping.save();
-
-    res.json({ message: "Order confirmed and shipped successfully!" });
 };
-
 
 export const totalNumberOfOrders: RequestHandler = async (req, res) => {
     try {
@@ -249,7 +266,7 @@ export const createOrder: RequestHandler = async (req, res) => {
     const userEmail = req.user.email;
 
     try {
-        const { name, email, phone, address, cart: cartString, totalPrice } = req.body;
+        const { name, email, phone, address, cart: cartString, total, subTotal, shippingFee } = req.body;
 
         // Parse the stringified cart into a JavaScript object
         const cart = JSON.parse(cartString);
@@ -267,7 +284,9 @@ export const createOrder: RequestHandler = async (req, res) => {
             email,
             mobile: phone,
             address,
-            total: totalPrice,
+            subTotal,
+            total,
+            shippingFee,
             cart,  // Save the parsed cart to the order
             orderStatus: "pending",
             isPaid: "unpaid",
@@ -312,18 +331,12 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
         order.orderDate = new Date();
 
 
+
+
         await order.save();
 
 
-        const shipping = new Shipping({
-            orderId: order._id,
-            name,
-            email,
-            address,
-            phone,
-            note,
-        });
-        await shipping.save();
+
 
         // Prepare product names and quantities for the email in HTML table format
         let productListTable = `
@@ -332,6 +345,7 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
     <tr>
       <th style="padding: 8px; background-color: #f4f4f4;">Product</th>
       <th style="padding: 8px; background-color: #f4f4f4;">Quantity</th>
+      <th style="padding: 8px; background-color: #f4f4f4;">Price</th>
     </tr>
   </thead>
   <tbody>
@@ -346,10 +360,14 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             }
 
             // Decrease product quantity and update top selling field
+            const purchasePrice = productExist.price * parseInt(cartItem.quantity, 10);
             const purchaseQuantity = parseInt(cartItem.quantity, 10); // Ensure quantity is a number
             productExist.quantity -= purchaseQuantity;
             productExist.topSelling = Math.max(productExist.topSelling, purchaseQuantity);
-
+            const formattedPurchasePrice = new Intl.NumberFormat('en-NG', {
+                style: 'currency',
+                currency: 'NGN',
+            }).format(purchasePrice);
             // Mark the product as out of stock if needed
             if (productExist.quantity <= 0) {
                 productExist.inStock = false;
@@ -358,11 +376,14 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             // Save the updated product
             await productExist.save();
 
+
+
             // Add the product details in the HTML table row
             productListTable += `
       <tr>
           <td style="padding: 8px;">${productExist.name}</td>
           <td style="padding: 8px;">${purchaseQuantity}</td>
+          <td style="padding: 8px;">${formattedPurchasePrice}</td>
       </tr>
   `;
         }
@@ -378,7 +399,15 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             timeStyle: "short",
         }).format(new Date(order?.orderDate));
 
-        const formattedAmount = new Intl.NumberFormat('en-NG', {
+        const formattedsubTotalAmount = new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+        }).format(order.subTotal);
+        const formattedShippingFeeAmount = new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+        }).format(order.shippingFee);
+        const formattedTotalAmount = new Intl.NumberFormat('en-NG', {
             style: 'currency',
             currency: 'NGN',
         }).format(order.total);
@@ -389,9 +418,15 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             order.email,
             orderNumber,
             formattedOrderDate,
-            productListTable,  // Send the table of products
-            formattedAmount,   // Send the total amount
-            order.cart.length   // Send the number of products in the order
+
+            productListTable,
+            formattedTotalAmount,
+            order.cart.length,
+            formattedShippingFeeAmount,
+
+            formattedsubTotalAmount,
+            // Send the table of products
+            // Send the number of products in the order
         );
 
         await sendOrderConfirmationEmailAdmin(
@@ -399,8 +434,10 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             order.email,
             orderNumber,
             formattedOrderDate,
+            formattedsubTotalAmount,
+            formattedShippingFeeAmount,
+            formattedTotalAmount,
             productListTable,  // Send the table of products
-            formattedAmount,     // Send the total amount
             order.cart.length     // Send the number of products in the order
         );
 
