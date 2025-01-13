@@ -87,8 +87,10 @@ export const confirmedOrderStatus: RequestHandler = async (req, res) => {
           <thead>
             <tr>
               <th style="padding: 8px; background-color: #f4f4f4;">Product</th>
+                            <th style="padding: 8px; background-color: #f4f4f4;">Unit Price</th>
+
               <th style="padding: 8px; background-color: #f4f4f4;">Quantity</th>
-              <th style="padding: 8px; background-color: #f4f4f4;">Price</th>
+              <th style="padding: 8px; background-color: #f4f4f4;">Sub Total</th>
             </tr>
           </thead>
           <tbody>
@@ -108,13 +110,19 @@ export const confirmedOrderStatus: RequestHandler = async (req, res) => {
                 style: 'currency',
                 currency: 'NGN',
             }).format(purchasePrice);
+            const formattedUnitPrice = new Intl.NumberFormat('en-NG', {
+                style: 'currency',
+                currency: 'NGN',
+            }).format(productExist.price);
 
             productListTable += `
           <tr>
-            <td style="padding: 8px;">${productExist.name}</td>
-            <td style="padding: 8px;">${purchaseQuantity}</td>
-            <td style="padding: 8px;">${formattedPurchasePrice}</td>
-          </tr>
+          <td style="padding: 8px;">${productExist.name}</td>
+                    <td style="padding: 8px;">${formattedUnitPrice}</td>
+
+          <td style="padding: 8px;">${purchaseQuantity}</td>
+          <td style="padding: 8px;">${formattedPurchasePrice}</td>
+      </tr>
         `;
         }
 
@@ -177,6 +185,10 @@ export const confirmedOrderStatus: RequestHandler = async (req, res) => {
                 formattedExpectedDeliveryDate,
                 driver.name,
                 driver.phone,
+                formattedTotalAmount,
+                formattedShippingFeeAmount,
+                formattedsubTotalAmount,
+
             );
 
             await shipping.save();
@@ -186,7 +198,7 @@ export const confirmedOrderStatus: RequestHandler = async (req, res) => {
 
             const shipping = await Shipping.findOne({ orderId });
             if (shipping) {
-                console.log(shipping)
+                // console.log(shipping)
                 shipping.deliveryDate = new Date();
                 await shipping.save();
             }
@@ -203,9 +215,9 @@ export const confirmedOrderStatus: RequestHandler = async (req, res) => {
                 formattedDeliveryDate,
                 productListTable,
                 order._id,
-                // formattedTotalAmount,
-                // formattedShippingFeeAmount,
-                // formattedsubTotalAmount,
+                formattedTotalAmount,
+                formattedShippingFeeAmount,
+                formattedsubTotalAmount,
             );
         } else if (order.orderStatus === "completed") {
             return res.status(400).json({ message: "Order already completed!" });
@@ -344,8 +356,10 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
   <thead>
     <tr>
       <th style="padding: 8px; background-color: #f4f4f4;">Product</th>
+            <th style="padding: 8px; background-color: #f4f4f4;">Unit Price</th>
+
       <th style="padding: 8px; background-color: #f4f4f4;">Quantity</th>
-      <th style="padding: 8px; background-color: #f4f4f4;">Price</th>
+      <th style="padding: 8px; background-color: #f4f4f4;">Sub Total</th>
     </tr>
   </thead>
   <tbody>
@@ -368,6 +382,10 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
                 style: 'currency',
                 currency: 'NGN',
             }).format(purchasePrice);
+            const formattedUnitPrice = new Intl.NumberFormat('en-NG', {
+                style: 'currency',
+                currency: 'NGN',
+            }).format(productExist.price);
             // Mark the product as out of stock if needed
             if (productExist.quantity <= 0) {
                 productExist.inStock = false;
@@ -382,6 +400,8 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             productListTable += `
       <tr>
           <td style="padding: 8px;">${productExist.name}</td>
+                    <td style="padding: 8px;">${formattedUnitPrice}</td>
+
           <td style="padding: 8px;">${purchaseQuantity}</td>
           <td style="padding: 8px;">${formattedPurchasePrice}</td>
       </tr>
@@ -434,11 +454,11 @@ export const updateOrderToProcessing: RequestHandler = async (req, res) => {
             order.email,
             orderNumber,
             formattedOrderDate,
-            formattedsubTotalAmount,
-            formattedShippingFeeAmount,
+            productListTable,
             formattedTotalAmount,
-            productListTable,  // Send the table of products
-            order.cart.length     // Send the number of products in the order
+            order.cart.length,
+            formattedShippingFeeAmount,
+            formattedsubTotalAmount,
         );
 
         res.status(200).json({

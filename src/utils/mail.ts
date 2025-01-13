@@ -381,6 +381,9 @@ export const shippedOrderEmail = async (
   expectedDeliveryDate: string,
   driverName: string,
   driverPhone: string,
+  totalAmount: string,
+  shippingFee: string,
+  subTotal: string,
 ) => {
   // const transport = generateMailTransporter()
 
@@ -408,6 +411,9 @@ export const shippedOrderEmail = async (
       "expected_delivery_date": expectedDeliveryDate,
       "driver_name": driverName,
       "driver_phone": driverPhone,
+      "total_amount": totalAmount,
+      "shipping_fee": shippingFee,
+      "sub_total": subTotal,
     }
   });
 }
@@ -419,9 +425,9 @@ export const deliveredOrderEmail = async (
   deliveryDate: string,
   productListTable: string, // updated to accept the HTML table format
   orderId: string,
-  // totalAmount: string,
-  // shippingFee: string,
-  // subTotal: string,
+  totalAmount: string,
+  shippingFee: string,
+  subTotal: string,
 ) => {
   // const transport = generateMailTransporter()
 
@@ -447,9 +453,9 @@ export const deliveredOrderEmail = async (
       "delivery_date": deliveryDate,
       "product_table": productListTable,  // This now holds the HTML table format for products
       "order_id": orderId,
-      // "total_amount": totalAmount,
-      // "shipping_fee": shippingFee,
-      // "sub_total": subTotal,
+      "total_amount": totalAmount,
+      "shipping_fee": shippingFee,
+      "sub_total": subTotal,
     }
   });
 }
